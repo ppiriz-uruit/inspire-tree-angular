@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>InspireTree</title>
+        <link rel="stylesheet" href="../build/inspire-tree.css" />
+        <link rel="stylesheet" href="demo.css" />
+        <style>
+            /* Angular directives require an extra DIV */
+            .collapsed > div > ol {
+                display: none;
+            }
+
+            li > div > .title-wrap {
+                position: relative;
+                z-index: 2;
+            }
+
+            .selected > div > .wholerow {
+                background: #a4eaf5;
+            }
+
+            .focused:not(.selected) > div > .wholerow {
+                background: #dafaff;
+            }
+        </style>
+    </head>
+    <body ng-controller="TestController">
+        <p>This is an extremely basic demo of implementing an Angular-native renderer.</p>
+        <div>
+			<input type="button" ng-click="addNode()" value="Add child"/>
+			<input type="button" ng-click="editNode()" value="Edit node"/>
+            <inspire-tree options="options" class="tree inspire-tree editable editable-add editable-edit editable-remove"></inspire-tree>
+        </div>
+    </body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js"></script>
+    <script>
+        require.config({
+            paths: {
+                angular: 'https://ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min',
+                inspireTree: '../dist/inspire-tree-core.min',
+                ngInspireTree: './angular-inspire-tree',
+                lodash: 'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.15.0/lodash'
+            },
+            shim: {
+                angular: {
+                    exports: 'angular'
+                }
+            }
+        });
+
+        require([
+            'angular',
+            'lodash',
+            'ngInspireTree'
+        ], function(angular, _) {
+            var module = angular.module('inspire', ['ngInspireTree']);
+
+            module.controller('TestController', ['$http', '$scope', function($http, $scope) {
+				$scope.selNode;
+                $scope.options = {
+					config: { 
+						editable: true,
+						editing: {
+							add: true,
+							edit: true,
+							remove: true
+						},					
+					},
+                    data: function(node, resolve, reject) {
+                        // InspireTree can take normal promises, but angular wraps the response
+                        $http.get('sample-data/full.json').then(function(response) {
+                            resolve(response.data);
+                        }).catch(reject);
+                    },
+                    onRegisterApi: function(api) {
+                        console.log('api', api);
+						
+						api.on("node.selected", function(node) {
+							$scope.selNode = node;
+							console.log('node sel: ', node);
+						});						
+                    }
+                }
+				
+				$scope.addNode = function() {
+					if ($scope.selNode) {
+						var n = $scope.selNode.addChild($scope.blankNode()); 
+						$scope.selNode.expand();
+						n.select();
+						console.log('node added: ', n);
+					}
+				}
+				
+				$scope.editNode = function() {
+					if ($scope.selNode) {
+						$scope.selNode.toggleEditing(); 
+						console.log('node editing: ', $scope.selNode);
+					}
+				}
+				
+				$scope.blankNode = function() {
+					return {
+						text: 'New Node',
+						itree: {
+							state: {
+								editing: true,
+								focused: false
+							}
+						}
+					};
+				}				
+            }]);
+
+            // Bootstrap the SAMMWeb application
+            angular.element(document).ready(function() {
+                angular.bootstrap(document, ['inspire']);
+            });
+        });
+    </script>
+</html>
